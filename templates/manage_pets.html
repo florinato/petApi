@@ -1,0 +1,196 @@
+{% extends "base.html" %}
+
+{% block title %}Gestión de Mascotas{% endblock %}
+
+{% block content %}
+    <h1>Gestión de Mascotas Virtuales</h1>
+
+    <!-- Listado de Mascotas del Usuario -->
+    <div id="pets-list">
+        <h2>Tus Mascotas:</h2>
+        <ul id="pets-ul">
+            <!-- Aquí se llenará con las mascotas existentes -->
+        </ul>
+    </div>
+
+    <!-- Formulario para Crear/Actualizar Mascota -->
+    <form id="pet-form" style="display:none;">
+        <label for="pet-select">Seleccionar Mascota:</label>
+        <select id="pet-select">
+            <option value="">Nueva Mascota</option>
+        </select>
+
+        <label for="name">Nombre de la Mascota:</label>
+        <input type="text" id="name" placeholder="Nombre">
+
+        <label for="type">Tipo de Mascota:</label>
+        <input type="text" id="type" placeholder="Tipo de Mascota">
+
+        <label for="color">Color de la Mascota:</label>
+        <input type="text" id="color" placeholder="Color">
+
+        <label for="mood">Estado de Ánimo:</label>
+        <input type="text" id="mood" placeholder="Estado de Ánimo">
+
+        <label for="energy">Nivel de Energía:</label>
+        <input type="number" id="energy" placeholder="100">
+
+        <button type="submit">Guardar/Cambiar</button>
+        <button type="button" class="delete">Eliminar</button>
+    </form>
+
+    <!-- Botón para mostrar el formulario de crear nueva mascota -->
+    <button id="show-form-btn">Agregar Nueva Mascota</button>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const petForm = document.getElementById('pet-form');
+    const petSelect = document.getElementById('pet-select');
+    const petsList = document.getElementById('pets-ul');
+    const showFormBtn = document.getElementById('show-form-btn');
+
+    // Cargar mascotas cuando la página se carga
+    window.onload = async function() {
+        await loadPets();
+    };
+
+    // Mostrar el formulario de mascotas
+    showFormBtn.onclick = function() {
+        petForm.style.display = 'block';
+        showFormBtn.style.display = 'none';
+    };
+
+    // Cargar mascotas desde la API
+    async function loadPets() {
+        const response = await fetch(`${window.location.origin}/pets/`, {
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('token')
+            }
+        });
+
+        if (response.ok) {
+            const pets = await response.json();
+            petsList.innerHTML = ''; // Limpiar la lista antes de añadir nuevas mascotas
+            pets.forEach(pet => {
+                const li = document.createElement('li');
+                li.textContent = `${pet.name} - ${pet.type} (${pet.mood}, Energía: ${pet.energy_level})`;
+                petsList.appendChild(li);
+
+                // Añadir opción al select del formulario
+                const option = document.createElement('option');
+                option.value = pet.name;
+                option.textContent = pet.name;
+                petSelect.appendChild(option);
+            });
+        } else {
+            alert('Error al cargar mascotas. Asegúrate de que estás autenticado.');
+        }
+    }
+
+    // Manejar el envío del formulario para crear o actualizar una mascota
+    petForm.onsubmit = async function(event) {
+        event.preventDefault();
+
+        const petData = {
+            name: document.getElementById('name').value,
+            type: document.getElementById('type').value,
+            color: document.getElementById('color').value,
+            mood: document.getElementById('mood').value,
+            energy_level: parseInt(document.getElementById('energy').value)
+        };
+
+        const selectedPet = petSelect.value;
+
+        if (selectedPet) {
+            // Actualizar la mascota existente
+            await fetch(`${window.location.origin}/pets/${selectedPet}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                },
+                body: JSON.stringify(petData)
+            });
+        } else {
+            // Crear una nueva mascota
+            await fetch(`${window.location.origin}/pets/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                },
+                body: JSON.stringify(petData)
+            });
+        }
+
+        // Recargar la lista de mascotas
+        await loadPets();
+        petForm.reset(); // Limpia el formulario después de guardar/cambiar la mascota
+        petForm.style.display = 'none'; // Oculta el formulario después de guardar/cambiar
+        showFormBtn.style.display = 'block'; // Muestra el botón para agregar una nueva mascota
+    };
+
+    // Manejar la eliminación de una mascota
+    document.querySelector('.delete').onclick = async function() {
+        const selectedPet = petSelect.value;
+
+        if (selectedPet) {
+            const response = await fetch(`${window.location.origin}/pets/${selectedPet}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                }
+            });
+
+            if (response.ok) {
+                await loadPets(); // Recargar la lista de mascotas
+                petForm.reset(); // Limpia el formulario después de eliminar la mascota
+                petForm.style.display = 'none'; // Oculta el formulario después de eliminar
+                showFormBtn.style.display = 'block'; // Muestra el botón para agregar una nueva mascota
+            } else {
+                alert('Error al eliminar la mascota. Asegúrate de que estás autenticado.');
+            }
+        } else {
+            alert('Selecciona una mascota para eliminar.');
+        }
+    };
+
+    // Cargar los datos de una mascota seleccionada en el formulario
+    petSelect.onchange = async function() {
+        const selectedPet = petSelect.value;
+
+        if (selectedPet) {
+            const response = await fetch(`${window.location.origin}/pets/`, {
+                headers: {
+                    'Authorization': 'Bearer ' + localStorage.getItem('token')
+                }
+            });
+
+            if (response.ok) {
+                const pets = await response.json();
+                const pet = pets.find(p => p.name === selectedPet);
+
+                if (pet) {
+                    document.getElementById('name').value = pet.name;
+                    document.getElementById('type').value = pet.type;
+                    document.getElementById('color').value = pet.color;
+                    document.getElementById('mood').value = pet.mood;
+                    document.getElementById('energy').value = pet.energy_level;
+                    petForm.style.display = 'block';
+                    showFormBtn.style.display = 'none';
+                }
+            } else {
+                alert('Error al cargar la mascota seleccionada.');
+            }
+        } else {
+            petForm.reset(); // Limpia el formulario si no hay ninguna mascota seleccionada
+            petForm.style.display = 'none'; // Oculta el formulario si no hay selección
+            showFormBtn.style.display = 'block'; // Muestra el botón para agregar una nueva mascota
+        }
+    };
+</script>
+{% endblock %}
+
+
+
