@@ -11,7 +11,7 @@
 ## Configuración del entorno
 
 1. Clonar el repositorio:
-   git clone https://github.com/tu_usuario/tu_repositorio.git
+   git clone https://github.com/florinato/petApi.git
    cd tu_repositorio
 
 2. Crear y activar entorno virtual:
